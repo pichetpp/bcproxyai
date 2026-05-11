@@ -235,11 +235,12 @@ export const FREE_MODEL_CATALOG: readonly FreeModelCatalogEntry[] = [
   //    send tao to ..."), and several model_ids 404 outright.
 
   // ── Ollama Cloud (free tier: daily quota, requires API key) ──
+  // NOTE: deepseek-v3.1:671b-cloud and kimi-k2:1t-cloud were REMOVED after
+  // production probe revealed they return "this model requires a subscription".
+  // Only the three below are confirmed-free via direct API call.
   ollamacloud("gpt-oss:120b-cloud", "OllamaCloud: gpt-oss 120B", 131072, { tools: true, reasoning: true, json: true }),
   ollamacloud("gpt-oss:20b-cloud", "OllamaCloud: gpt-oss 20B", 131072, { tools: true, reasoning: true, json: true }),
-  ollamacloud("deepseek-v3.1:671b-cloud", "OllamaCloud: DeepSeek V3.1 671B", 131072, { tools: true, json: true }),
   ollamacloud("qwen3-coder:480b-cloud", "OllamaCloud: Qwen 3 Coder 480B", 262144, { code: true, tools: true, json: true }),
-  ollamacloud("kimi-k2:1t-cloud", "OllamaCloud: Kimi K2 1T", 262144, { tools: true, json: true }),
 
   // ── Typhoon (SCB 10X Thai LLM, free 5 RPS / 200 RPM, no card required) ──
   typhoon("typhoon-v2.5-30b-a3b-instruct", "Typhoon: V2.5 30B A3B Instruct (TH)", 8192, { tools: true, json: true }),

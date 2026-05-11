@@ -6,6 +6,7 @@ import { timingSafeStringEqual } from "@/lib/secret-compare";
 import { checkSsrfSafe } from "@/lib/ssrf-guard";
 import { getNextApiKey } from "@/lib/api-keys";
 import { resolveProviderUrl } from "@/lib/provider-resolver";
+import { isProviderCostAllowed } from "@/lib/cost-policy";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ name: stri
   if (!who.ok) return NextResponse.json({ error: "owner only" }, { status: 401 });
   const { name } = await ctx.params;
   try {
+    // Cost-policy gate: even an owner probe must stay inside the free
+    // catalog. Otherwise this endpoint becomes a vector to burn paid quota
+    // on a provider whose key was stored historically (or pasted via the
+    // base_url override) but which the gateway no longer routes traffic to.
+    if (!isProviderCostAllowed(name)) {
+      return NextResponse.json(
+        { ok: false, error: `Provider '${name}' is blocked by cost policy — not in free catalog`, chatUrl: null, modelsUrl: null },
+        { status: 402 },
+      );
+    }
     const body = (await req.json().catch(() => ({}))) as TestBody;
     const overrideUrl = body.base_url?.trim();
     const chatUrl = overrideUrl || resolveProviderUrl(name);
