@@ -83,17 +83,35 @@ export async function pingModel(
 
     if (res.ok) {
       // Detect non-chat models by inspecting response structure.
-      // A real chat model returns choices[0].message.content as a non-empty string.
-      // Audio/TTS/safety models either return different structure or empty content.
+      // A chat model returns either text in content, OR a reasoning trace
+      // (gpt-oss / o-series / qwen3-thinking blow the 5-token probe budget
+      // on reasoning before producing content — that does NOT mean it's an
+      // audio/safety classifier). Only flag as non-chat when the response
+      // is explicitly audio-shaped or all of content+reasoning are empty.
       try {
         const json = await res.clone().json() as {
-          choices?: Array<{ message?: { content?: string | null } }>;
+          choices?: Array<{
+            message?: {
+              content?: string | null;
+              reasoning?: string | null;
+              reasoning_content?: string | null;
+              reasoning_details?: unknown;
+              audio?: unknown;
+            };
+            finish_reason?: string;
+          }>;
           audio?: unknown;
           object?: string;
         };
-        const content = json.choices?.[0]?.message?.content;
-        const isChat = typeof content === "string" && content.trim().length > 0;
-        const isAudio = json.audio != null || json.object === "audio";
+        const msg = json.choices?.[0]?.message;
+        const hasContent = typeof msg?.content === "string" && msg.content.trim().length > 0;
+        const hasReasoning =
+          (typeof msg?.reasoning === "string" && msg.reasoning.trim().length > 0) ||
+          (typeof msg?.reasoning_content === "string" && msg.reasoning_content.trim().length > 0) ||
+          msg?.reasoning_details != null;
+        const finishedOnLength = json.choices?.[0]?.finish_reason === "length";
+        const isChat = hasContent || hasReasoning || finishedOnLength;
+        const isAudio = json.audio != null || json.object === "audio" || msg?.audio != null;
         if (!isChat || isAudio) {
           return { status: "available", latency, isNonChat: true };
         }
