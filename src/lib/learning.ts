@@ -451,7 +451,14 @@ export async function recordCategoryOutcome(
 }
 
 /**
- * คืน model ids ที่เก่ง category นี้ (sorted by wins)
+ * คืน model ids ที่เก่ง category นี้ (sorted by success rate then absolute win count).
+ *
+ * Tiebreak by `wins DESC` BEFORE `avg_latency_ms ASC` is critical: in a pool
+ * of 100%-success-rate models, a Thai-tuned upstream (Typhoon, ThaiLLM) may
+ * be slower than a generalist on fast silicon (e.g. Groq Llama-4-Scout), but
+ * the higher win count means it's been chosen more often and proven for this
+ * category. Sorting latency first inside the 100% bucket would let a fast
+ * generalist hijack `sml/thai` traffic away from Thai-native models.
  */
 export async function getCategoryWinners(category: string, limit = 5): Promise<string[]> {
   try {
@@ -461,7 +468,10 @@ export async function getCategoryWinners(category: string, limit = 5): Promise<s
       WHERE category = ${category}
         AND wins >= 3
         AND loss_streak < 3
-      ORDER BY wins::float / NULLIF(wins + losses, 0) DESC, avg_latency_ms ASC
+      ORDER BY
+        wins::float / NULLIF(wins + losses, 0) DESC,
+        wins DESC,
+        avg_latency_ms ASC
       LIMIT ${limit}
     `;
     return rows.map(r => r.model_id);
