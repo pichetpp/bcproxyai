@@ -42,6 +42,11 @@ export const PROVIDER_EMBEDDING_URLS: Record<string, string> = {
   openrouter: "https://openrouter.ai/api/v1/embeddings",
   mistral: "https://api.mistral.ai/v1/embeddings",
   ollama: `${process.env.OLLAMA_BASE_URL || "http://localhost:11434"}/v1/embeddings`,
+  google: "https://generativelanguage.googleapis.com/v1beta/openai/embeddings",
+  cohere: "https://api.cohere.com/compatibility/v1/embeddings",
+  nvidia: "https://integrate.api.nvidia.com/v1/embeddings",
+  together: "https://api.together.xyz/v1/embeddings",
+  huggingface: "https://router.huggingface.co/hf-inference/v1/embeddings",
 };
 
 // Legacy completions endpoints (providers that support /v1/completions)

@@ -256,6 +256,34 @@ export const FREE_MODEL_CATALOG: readonly FreeModelCatalogEntry[] = [
   sealion("aisingapore/Gemma-SEA-LION-v4-27B-IT", "SEA-LION: Gemma v4 27B IT", 8192, { tools: true, vision: true, json: true }),
   sealion("aisingapore/Qwen-SEA-LION-v4-32B-IT", "SEA-LION: Qwen v4 32B IT", 8192, { tools: true, json: true }),
   sealion("aisingapore/Llama-SEA-LION-v3.5-70B-R", "SEA-LION: Llama v3.5 70B Reasoning", 8192, { reasoning: true, json: true }),
+
+  // ── 2026-05-12 additions: free-tier models verified live with existing keys ──
+  // OpenRouter :free additions
+  openrouter("inclusionai/ring-2.6-1t:free", "inclusionAI: Ring-2.6-1T (free)", 262144, { tools: true, reasoning: true }),
+  openrouter("baidu/cobuddy:free", "Baidu: CoBuddy (free)", 131072, { tools: true, reasoning: true }),
+  openrouter("arcee-ai/trinity-large-thinking:free", "Arcee: Trinity Large Thinking (free)", 262144, { tools: true, reasoning: true }),
+  openrouter("openrouter/owl-alpha", "OpenRouter: Owl Alpha (free, 1M ctx)", 1048576, { tools: true, json: true }),
+
+  // GitHub Models additions (free preview)
+  github("openai/gpt-5", "OpenAI: GPT-5 (preview)", 400000, { tools: true, vision: true, reasoning: true, json: true }),
+  github("openai/gpt-5-mini", "OpenAI: GPT-5 mini (preview)", 400000, { tools: true, vision: true, reasoning: true, json: true }),
+  github("ai21-labs/AI21-Jamba-1.5-Large", "AI21: Jamba 1.5 Large", 256000, { tools: true, json: true }),
+  github("microsoft/MAI-DS-R1", "Microsoft: MAI-DS-R1 (reasoning)", 131072, { reasoning: true }),
+  github("deepseek/DeepSeek-R1-0528", "DeepSeek: R1-0528 (reasoning)", 131072, { reasoning: true }),
+
+  // Cohere additions (multilingual incl Thai — 23 languages)
+  cohere("command-a-reasoning-08-2025", "Cohere: Command A Reasoning", 256000, { tools: true, reasoning: true, json: true }),
+  cohere("c4ai-aya-expanse-32b", "Cohere: Aya Expanse 32B (multilingual)", 128000, { tools: true, json: true }),
+
+  // Mistral additions
+  mistral("magistral-medium-latest", "Mistral: Magistral Medium (reasoning)", 131072, { tools: true, reasoning: true, json: true }),
+  mistral("devstral-medium-latest", "Mistral: Devstral Medium (agentic code)", 262144, { tools: true, reasoning: true, code: true, json: true }),
+
+  // Cerebras addition (Z.ai GLM 4.7 preview)
+  cerebras("zai-glm-4.7", "Cerebras: Z.ai GLM 4.7 (preview)", 8192, { tools: true, reasoning: true, json: true }),
+
+  // Google addition (Gemini 3 Flash preview — multilingual incl Thai)
+  google("gemini-3-flash-preview", "Google: Gemini 3 Flash (preview)", 1048576, { tools: true, vision: true, reasoning: true, json: true }),
 ] as const;
 
 const FREE_MODEL_KEYS = new Set(

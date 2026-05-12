@@ -8,12 +8,41 @@ export const runtime = "nodejs";
 
 /**
  * POST /v1/audio/speech — Text-to-speech
- * Proxy to Groq Orpheus TTS (free: 100 req/day)
- * Models: playai/PlayDialog, canopylabs/orpheus-v1-english
- * Voices: austin, daniel, troy, diana, hannah, autumn
+ *
+ * Routing:
+ *   - Thai input → msedge-tts (Microsoft Edge TTS, MIT-licensed wrapper, free,
+ *     th-TH-PremwadeeNeural / th-TH-NiwatNeural neural voices)
+ *   - Other languages → Groq Orpheus (free 100 req/day, EN + AR Saudi)
  */
+const THAI_RE = /[฀-๿]/;
+const DEFAULT_TTS_MODEL = "canopylabs/orpheus-v1-english";
+const THAI_DEFAULT_VOICE = "th-TH-PremwadeeNeural";
+const THAI_VOICES: Record<string, string> = {
+  female: "th-TH-PremwadeeNeural",
+  male: "th-TH-NiwatNeural",
+  premwadee: "th-TH-PremwadeeNeural",
+  niwat: "th-TH-NiwatNeural",
+};
+
 export async function POST(req: NextRequest) {
   try {
+    let body: Record<string, unknown>;
+    try {
+      body = (await req.json()) as Record<string, unknown>;
+    } catch {
+      return openAIError(400, { message: "Invalid JSON in request body", code: "invalid_request" });
+    }
+
+    if (!body.input || typeof body.input !== "string") {
+      return openAIError(400, { message: "input is required and must be a string", param: "input" });
+    }
+
+    // Thai branch — use Microsoft Edge TTS via msedge-tts (no API key needed)
+    if (THAI_RE.test(body.input)) {
+      return synthesizeThai(body);
+    }
+
+    // Non-Thai → Groq Orpheus
     if (!isProviderCostAllowed("groq")) {
       return openAIError(402, {
         message: costPolicyBlockMessage("groq"),
@@ -29,13 +58,6 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const body = (await req.json()) as Record<string, unknown>;
-
-    if (!body.input) {
-      return openAIError(400, { message: "input is required", param: "input" });
-    }
-
-    // Map OpenAI model names to Groq TTS models
     const model = mapTTSModel(body.model as string);
     const voice = (body.voice as string) || "austin";
     const responseFormat = (body.response_format as string) || "wav";
@@ -62,7 +84,6 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Return audio binary directly
     const audioBuffer = await response.arrayBuffer();
     const contentType =
       responseFormat === "mp3" ? "audio/mpeg" :
@@ -85,15 +106,52 @@ export async function POST(req: NextRequest) {
   }
 }
 
+async function synthesizeThai(body: Record<string, unknown>): Promise<Response> {
+  try {
+    const { MsEdgeTTS, OUTPUT_FORMAT } = await import("msedge-tts");
+    const requestedVoice = (body.voice as string) || "";
+    const voice = requestedVoice.startsWith("th-TH-")
+      ? requestedVoice
+      : THAI_VOICES[requestedVoice.toLowerCase()] || THAI_DEFAULT_VOICE;
+
+    const tts = new MsEdgeTTS();
+    await tts.setMetadata(voice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+    const { audioStream } = await tts.toStream(body.input as string);
+    const chunks: Buffer[] = [];
+    for await (const chunk of audioStream) chunks.push(chunk as Buffer);
+    const audioBuffer = Buffer.concat(chunks);
+
+    return new Response(audioBuffer, {
+      status: 200,
+      headers: {
+        "Content-Type": "audio/mpeg",
+        "Access-Control-Allow-Origin": "*",
+        "X-SMLGateway-Provider": "msedge-tts",
+        "X-SMLGateway-Model": voice,
+      },
+    });
+  } catch (err) {
+    console.error("[v1/audio/speech] Edge TTS error:", err);
+    return openAIError(502, {
+      message: `Thai TTS provider failed: ${err instanceof Error ? err.message : String(err)}`,
+      code: "upstream_error",
+    });
+  }
+}
+
 function mapTTSModel(model?: string): string {
   if (!model || model === "tts-1" || model === "tts-1-hd") {
-    return "playai/PlayDialog";
+    return DEFAULT_TTS_MODEL;
+  }
+  // Migrate retired playai/PlayDialog references to current default
+  if (/playai|playdialog/i.test(model)) {
+    return DEFAULT_TTS_MODEL;
   }
   // Allow direct Groq model names
-  if (model.includes("/") || model.includes("orpheus") || model.includes("playai") || model.includes("PlayDialog")) {
+  if (model.includes("/") || /orpheus/i.test(model)) {
     return model;
   }
-  return "playai/PlayDialog";
+  return DEFAULT_TTS_MODEL;
 }
 
 export async function OPTIONS() {
